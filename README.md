@@ -420,7 +420,7 @@ gar trigger \
 ## Future Enhancements
 
 - [ ] Remote agent deployment from a container image
-- [ ] Observability
+- [ ] Observability and trajectory collection
 - [ ] TLS support for remote agents
 - [ ] Advanced load balancing strategies
 - [ ] Make checkpointing optional
