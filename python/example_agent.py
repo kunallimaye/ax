@@ -19,6 +19,15 @@ def process(content):
     )
 
 
+def health_check():
+    """Health check function that always returns healthy"""
+    return True, "OK", {}
+
+
 if __name__ == "__main__":
-    agent = Agent(agent_id="python-agent", process_func=process)
+    agent = Agent(
+        agent_id="python-agent",
+        process_func=process,
+        health_check_func=health_check
+    )
     agent.serve(port=50051)

@@ -384,8 +384,16 @@ def process(content):
         data=f"Python processed: {content.data.upper()}"
     )
 
+def health_check():
+    """Health check function that always returns healthy"""
+    return True, "OK", {}
+
 # Create and start the agent
-agent = Agent(agent_id="python-agent", process_func=process)
+agent = Agent(
+    agent_id="python-agent",
+    process_func=process,
+    health_check_func=health_check
+)
 agent.serve(port=50051)
 ```
 
