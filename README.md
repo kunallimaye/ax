@@ -293,7 +293,7 @@ healthCheckFunc := func(ctx context.Context) error {
 myAgent, err := agent.NewLocalAgent(agent.LocalAgentConfig{
     ID:              "my-agent",
     ProcessFunc:     processFunc,
-    LifecycleFunc:   lifecycleFunc,      // optional
+    LifecycleFunc:   lifecycleFunc,       // optional
     HealthCheckFunc: healthCheckFunc,     // optional
 })
 ```
