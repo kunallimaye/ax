@@ -74,7 +74,7 @@ The remote agent runs as a gRPC server implementing AgentService on port :50051.
 
 **Terminal 2** - Start the gar controller server:
 ```bash
-gar serve --addr :8494
+gar serve
 ```
 
 The gar server exposes the GARService on port :8494.
@@ -94,9 +94,6 @@ gar trigger \
   --server localhost:8494 \
   --session-id session123 \
   --input "Hello remote agent"
-
-# List all sessions
-gar list --server localhost:8494
 
 # Inspect session details
 gar inspect --server localhost:8494 --session-id session123
@@ -187,7 +184,7 @@ Options:
 - `--name`: Human-readable name for the agent
 - `--description`: Description of agent capabilities
 
-#### Run Controller Server
+#### Run Server
 
 ```bash
 gar serve [--config <path>]
@@ -213,7 +210,6 @@ eventlog:
   dir: "eventlog"
 
 controller:
-  max_steps: 100
   health_check_interval: 30s
 ```
 
@@ -225,48 +221,6 @@ gar serve
 # Start server with custom config
 gar serve --config my-config.yaml
 ```
-
-Once running, clients can connect to the server to:
-- Start and resume sessions remotely
-- Query session status and list sessions
-- Register and unregister agents dynamically
-
-### Gemini-Powered Agent Selection
-
-GAR uses Google's Gemini models by default for intelligent agent selection. Instead of simple round-robin routing, Gemini analyzes the conversation context and agent capabilities to choose the best agent for each task.
-
-**Setup:**
-
-1. Get an API key from [Google AI Studio](https://aistudio.google.com/app/apikey)
-2. Set the environment variable:
-   ```bash
-   export GEMINI_API_KEY="your-api-key-here"
-   ```
-3. Start the server:
-   ```bash
-   gar serve
-   ```
-
-**How it works:**
-- Each registered agent becomes a "tool" that Gemini can call
-- Gemini reviews conversation history and agent descriptions
-- Gemini selects the most appropriate agent for each step
-- Agent metadata helps Gemini make better routing decisions
-
-**Environment Variables:**
-- `GEMINI_API_KEY`: Your Google AI API key (required)
-- `GAR_GEMINI_MODEL`: Model name (optional, defaults to "gemini-flash-latest")
-
-**Example agent registration with metadata:**
-```bash
-gar register \
-  --server localhost:8494 \
-  --agent-id math-agent \
-  --name "Math Agent" \
-  --description "Specialized in mathematical calculations and problem solving"
-```
-
-When a user asks "What is 25 * 4?", Gemini will automatically route to the math-agent instead of a generic agent.
 
 ### Checkpoints
 
@@ -405,7 +359,7 @@ func (s *server) HealthCheck(ctx context.Context, req *proto.HealthCheckRequest)
 
 **Workflow:**
 1. Remote agent starts as gRPC server on a port (e.g., :50051)
-2. Start gar controller: `gar serve --addr :8494`
+2. Start gar controller: `gar serve`
 3. Register with gar: `gar register --server localhost:8494 --agent-id my-agent --name "My Agent" --description "Agent description" --agent-addr localhost:50051`
 4. When gar triggers a session, it calls the agent's `Process` RPC
 5. GAR streams input content → Agent processes → Agent streams output back
