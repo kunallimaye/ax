@@ -25,22 +25,20 @@ var registerCmd = &cobra.Command{
 
 func init() {
 	registerCmd.Flags().StringVar(&registerAgentID, "agent-id", "", "Agent ID (required)")
-	registerCmd.Flags().StringVar(&registerAgentName, "name", "", "Agent name")
-	registerCmd.Flags().StringVar(&registerAgentDesc, "description", "", "Agent description")
-	registerCmd.Flags().StringVar(&registerAgentAddr, "agent-addr", "", "Agent address (e.g., localhost:50051)")
+	registerCmd.Flags().StringVar(&registerAgentName, "name", "", "Agent name (required)")
+	registerCmd.Flags().StringVar(&registerAgentDesc, "description", "", "Agent description (required)")
+	registerCmd.Flags().StringVar(&registerAgentAddr, "agent-addr", "", "Agent address (e.g., localhost:50051) (required)")
 	registerCmd.Flags().StringVar(&registerServerAddr, "server", "localhost:8494", "gRPC controller server address (default: localhost:8494)")
 	registerCmd.MarkFlagRequired("agent-id")
+	registerCmd.MarkFlagRequired("name")
+	registerCmd.MarkFlagRequired("description")
 	registerCmd.MarkFlagRequired("agent-addr")
 }
 
 func runRegister(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Registering agent: %s at %s\n", registerAgentID, registerAgentAddr)
-	if registerAgentName != "" {
-		fmt.Printf("  Name: %s\n", registerAgentName)
-	}
-	if registerAgentDesc != "" {
-		fmt.Printf("  Description: %s\n", registerAgentDesc)
-	}
+	fmt.Printf("  Name: %s\n", registerAgentName)
+	fmt.Printf("  Description: %s\n", registerAgentDesc)
 
 	conn, err := openConn(inspectServerAddr)
 	if err != nil {

@@ -152,17 +152,17 @@ Options:
 gar register \
     --agent-id <id> \
     --agent-addr <address> \
-    [--server <address>] \
-    [--name <name>] \
-    [--description <desc>]
+    --name <name> \
+    --description <desc> \
+    [--server <address>]
 ```
 
 Options:
 - `--agent-id`: Unique agent identifier (required)
 - `--agent-addr`: gRPC agent server address (e.g., "localhost:50051") (required)
+- `--name`: Human-readable name for the agent (required)
+- `--description`: Description of agent capabilities (required)
 - `--server`: gRPC controller server address (default: "localhost:8494")
-- `--name`: Human-readable name for the agent
-- `--description`: Description of agent capabilities
 
 #### Run Server
 
