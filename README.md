@@ -142,12 +142,6 @@ gar trigger --session-id abc123 \
 gar inspect --session-id <id> [--server <address>]
 ```
 
-Displays session details including:
-- Current state and step
-- Message count
-- Checkpoints
-- Active agents
-
 Options:
 - `--session-id`: Session identifier to inspect (required)
 - `--server`: gRPC controller server address (default: "localhost:8494")
