@@ -40,7 +40,7 @@ func runRegister(cmd *cobra.Command, args []string) error {
 	fmt.Printf("  Name: %s\n", registerAgentName)
 	fmt.Printf("  Description: %s\n", registerAgentDesc)
 
-	conn, err := openConn(inspectServerAddr)
+	conn, err := connect(inspectServerAddr)
 	if err != nil {
 		return err
 	}

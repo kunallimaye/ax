@@ -69,7 +69,7 @@ func runTrigger(cmd *cobra.Command, args []string) error {
 		cancel()
 	}()
 
-	conn, err := openConn(inspectServerAddr)
+	conn, err := connect(inspectServerAddr)
 	if err != nil {
 		return err
 	}
