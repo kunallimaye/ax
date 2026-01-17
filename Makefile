@@ -43,11 +43,11 @@ install:
 
 # Run local agent example
 run-local:
-	@go run examples/local_agent/main.go
+	@go run ./examples/local_agent
 
 # Run remote agent example
 run-remote:
-	@go run examples/remote_agent/main.go
+	@go run ./examples/remote_agent
 
 # Install dependencies
 deps:
