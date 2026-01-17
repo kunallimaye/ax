@@ -71,7 +71,6 @@ class Agent:
                         timestamp.GetCurrentTime()
                         event = pb2.LifecycleEvent(
                             event_type="HEARTBEAT",
-                            agent_id=agent.agent_id,
                             timestamp=timestamp
                         )
                         yield event

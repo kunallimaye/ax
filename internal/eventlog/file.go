@@ -125,7 +125,6 @@ func (e *FileEventLog) AppendLifecycleEvent(ctx context.Context, event *proto.Li
 
 	data := map[string]interface{}{
 		"event_type":        event.EventType,
-		"agent_id":          event.AgentId,
 		"timestamp_seconds": timestampSeconds,
 		"timestamp_nanos":   timestampNanos,
 		"metadata":          event.Metadata,

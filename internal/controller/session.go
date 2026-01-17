@@ -170,7 +170,6 @@ func (sm *SessionManager) LoadSessionFromCheckpoint(sessionID string, checkpoint
 
 			event := &proto.LifecycleEvent{
 				EventType: getStringFromData(entry.Data, "event_type"),
-				AgentId:   getStringFromData(entry.Data, "agent_id"),
 				Timestamp: timestamp,
 			}
 			session.LifecycleEvents = append(session.LifecycleEvents, event)

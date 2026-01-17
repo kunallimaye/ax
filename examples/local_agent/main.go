@@ -100,7 +100,6 @@ func createEchoAgent(id string) (*agent.LocalAgent, error) {
 		// Send initial PROGRESS event
 		if err := handler(&proto.LifecycleEvent{
 			EventType: "PROGRESS",
-			AgentId:   id,
 			Timestamp: timestamppb.Now(),
 			Metadata: map[string]string{
 				"status": "started",
@@ -118,7 +117,6 @@ func createEchoAgent(id string) (*agent.LocalAgent, error) {
 			case <-ticker.C:
 				if err := handler(&proto.LifecycleEvent{
 					EventType: "PROGRESS",
-					AgentId:   id,
 					Timestamp: timestamppb.Now(),
 					Metadata: map[string]string{
 						"status": "processing",

@@ -19,9 +19,8 @@ message Content {
 // LifecycleEvent represents events from agent lifecycle
 message LifecycleEvent {
   string event_type = 1;            // Event type: "PROGRESS", "HEARTBEAT"
-  string agent_id = 2;               // Unique identifier of the agent
-  google.protobuf.Timestamp timestamp = 3;  // Timestamp of the event
-  map<string, string> metadata = 4;  // Additional event metadata
+  google.protobuf.Timestamp timestamp = 2;  // Timestamp of the event
+  map<string, string> metadata = 3;  // Additional event metadata
 }
 
 // HealthCheckRequest for agent health checks

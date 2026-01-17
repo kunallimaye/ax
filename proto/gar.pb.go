@@ -154,9 +154,8 @@ func (x *Content) GetData() string {
 type LifecycleEvent struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	EventType     string                 `protobuf:"bytes,1,opt,name=event_type,json=eventType,proto3" json:"event_type,omitempty"`                                                        // Event type: "PROGRESS", "HEARTBEAT"
-	AgentId       string                 `protobuf:"bytes,2,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"`                                                              // Unique identifier of the agent
-	Timestamp     *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"`                                                                         // Timestamp of the event
-	Metadata      map[string]string      `protobuf:"bytes,4,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // Additional event metadata
+	Timestamp     *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`                                                                         // Timestamp of the event
+	Metadata      map[string]string      `protobuf:"bytes,3,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // Additional event metadata
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -194,13 +193,6 @@ func (*LifecycleEvent) Descriptor() ([]byte, []int) {
 func (x *LifecycleEvent) GetEventType() string {
 	if x != nil {
 		return x.EventType
-	}
-	return ""
-}
-
-func (x *LifecycleEvent) GetAgentId() string {
-	if x != nil {
-		return x.AgentId
 	}
 	return ""
 }
@@ -843,13 +835,12 @@ const file_proto_gar_proto_rawDesc = "" +
 	"\x04role\x18\x01 \x01(\tR\x04role\x12\x12\n" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x12\x1a\n" +
 	"\bmimetype\x18\x03 \x01(\tR\bmimetype\x12\x12\n" +
-	"\x04data\x18\x04 \x01(\tR\x04data\"\x82\x02\n" +
+	"\x04data\x18\x04 \x01(\tR\x04data\"\xe7\x01\n" +
 	"\x0eLifecycleEvent\x12\x1d\n" +
 	"\n" +
-	"event_type\x18\x01 \x01(\tR\teventType\x12\x19\n" +
-	"\bagent_id\x18\x02 \x01(\tR\aagentId\x128\n" +
-	"\ttimestamp\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\x12?\n" +
-	"\bmetadata\x18\x04 \x03(\v2#.proto.LifecycleEvent.MetadataEntryR\bmetadata\x1a;\n" +
+	"event_type\x18\x01 \x01(\tR\teventType\x128\n" +
+	"\ttimestamp\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\x12?\n" +
+	"\bmetadata\x18\x03 \x03(\v2#.proto.LifecycleEvent.MetadataEntryR\bmetadata\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"/\n" +

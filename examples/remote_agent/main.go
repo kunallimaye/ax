@@ -74,7 +74,6 @@ func (s *server) StreamLifecycle(stream proto.AgentService_StreamLifecycleServer
 	// Send initial PROGRESS event
 	if err := stream.Send(&proto.LifecycleEvent{
 		EventType: "PROGRESS",
-		AgentId:   s.agentID,
 		Timestamp: timestamppb.Now(),
 		Metadata: map[string]string{
 			"status": "started",
@@ -92,7 +91,6 @@ func (s *server) StreamLifecycle(stream proto.AgentService_StreamLifecycleServer
 		case <-ticker.C:
 			event := &proto.LifecycleEvent{
 				EventType: "PROGRESS",
-				AgentId:   s.agentID,
 				Timestamp: timestamppb.Now(),
 				Metadata: map[string]string{
 					"status": "healthy",
