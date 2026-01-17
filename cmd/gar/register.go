@@ -6,8 +6,6 @@ import (
 
 	"github.com/google/gar/proto"
 	"github.com/spf13/cobra"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 var (
@@ -44,10 +42,9 @@ func runRegister(cmd *cobra.Command, args []string) error {
 		fmt.Printf("  Description: %s\n", registerAgentDesc)
 	}
 
-	// Connect to gRPC server
-	conn, err := grpc.NewClient(registerServerAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := openConn(inspectServerAddr)
 	if err != nil {
-		return fmt.Errorf("failed to connect to server: %w", err)
+		return err
 	}
 	defer conn.Close()
 

@@ -11,8 +11,6 @@ import (
 	"github.com/google/gar/proto"
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 var (
@@ -73,15 +71,13 @@ func runTrigger(cmd *cobra.Command, args []string) error {
 		cancel()
 	}()
 
-	// Connect to gRPC server
-	conn, err := grpc.NewClient(triggerServerAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := openConn(inspectServerAddr)
 	if err != nil {
-		return fmt.Errorf("failed to connect to server: %w", err)
+		return err
 	}
 	defer conn.Close()
 
 	client := proto.NewGARServiceClient(conn)
-
 	stream, err := client.TriggerSession(ctx, &proto.TriggerSessionRequest{
 		SessionId:    triggerSessionID,
 		Inputs:       inputs,
@@ -105,7 +101,5 @@ func runTrigger(cmd *cobra.Command, args []string) error {
 			fmt.Printf("[%s] %s\n", resp.State, resp.Output.Data)
 		}
 	}
-
-	fmt.Println("Session completed successfully")
 	return nil
 }
