@@ -1,0 +1,302 @@
+package controller
+
+import (
+	"fmt"
+	"sync"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/google/gar/internal/eventlog"
+	"github.com/google/gar/proto"
+)
+
+// Session represents an agentic loop execution session.
+// It maintains in-memory state and uses event log for durability.
+type Session struct {
+	ID              string
+	State           proto.State
+	CurrentStep     int
+	ActiveAgents    []string
+	MessageHistory  []*proto.Content
+	LifecycleEvents []*proto.LifecycleEvent
+	CheckpointIDs   []string // Ordered list of checkpoint UUIDs
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	mu              sync.RWMutex
+	eventLog        eventlog.EventLog
+}
+
+// EventLogFactory is a function that creates EventLog instances for sessions.
+type EventLogFactory func(sessionID string) (eventlog.EventLog, error)
+
+// SessionManager manages multiple sessions.
+type SessionManager struct {
+	mu              sync.RWMutex
+	sessions        map[string]*Session
+	eventLogFactory EventLogFactory
+}
+
+// NewSessionManager creates a new session manager with a custom EventLog factory.
+func NewSessionManager(factory EventLogFactory) *SessionManager {
+	return &SessionManager{
+		sessions:        make(map[string]*Session),
+		eventLogFactory: factory,
+	}
+}
+
+// // NewSessionManagerWithFileEventLog creates a new session manager using file-based event logs.
+// // This is a convenience function for the common case of using file-based event logs.
+// func NewSessionManagerWithFileEventLog(elogFactory EventLogFactory) *SessionManager {
+
+// 	return NewSessionManager(factory)
+// }
+
+// NewSession creates a new session with the given ID.
+func (sm *SessionManager) NewSession(sessionID string) (*Session, error) {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
+	// Check if session already exists
+	if _, exists := sm.sessions[sessionID]; exists {
+		return nil, fmt.Errorf("session %s already exists", sessionID)
+	}
+
+	// Create event log for this session using the factory
+	el, err := sm.eventLogFactory(sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create event log: %w", err)
+	}
+
+	now := time.Now()
+	session := &Session{
+		ID:              sessionID,
+		State:           proto.State_STATE_RUNNING,
+		CurrentStep:     0,
+		ActiveAgents:    []string{},
+		MessageHistory:  []*proto.Content{},
+		LifecycleEvents: []*proto.LifecycleEvent{},
+		CheckpointIDs:   []string{},
+		CreatedAt:       now,
+		UpdatedAt:       now,
+		eventLog:        el,
+	}
+
+	sm.sessions[sessionID] = session
+	return session, nil
+}
+
+// LoadSession loads an existing session from event log.
+func (sm *SessionManager) LoadSession(sessionID string) (*Session, error) {
+	return sm.LoadSessionFromCheckpoint(sessionID, "")
+}
+
+// LoadSessionFromCheckpoint loads an existing session from event log up to a specific checkpoint.
+// If checkpointID is empty, loads to the latest state.
+// If checkpointID is provided, loads up to and including that checkpoint UUID.
+func (sm *SessionManager) LoadSessionFromCheckpoint(sessionID string, checkpointID string) (*Session, error) {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
+	// Check if already loaded - remove it to reload fresh from checkpoint
+	delete(sm.sessions, sessionID)
+
+	// Open event log for replay using the factory
+	replayLog, err := sm.eventLogFactory(sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open event log for replay: %w", err)
+	}
+	defer replayLog.Close()
+
+	// Get all entries from the event log
+	entries, err := replayLog.GetEntries()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get event log entries: %w", err)
+	}
+
+	// Reconstruct session state from event log
+	session := &Session{
+		ID:              sessionID,
+		State:           proto.State_STATE_RUNNING,
+		CurrentStep:     0,
+		ActiveAgents:    []string{},
+		MessageHistory:  []*proto.Content{},
+		LifecycleEvents: []*proto.LifecycleEvent{},
+		CheckpointIDs:   []string{},
+		CreatedAt:       time.Now(),
+		UpdatedAt:       time.Now(),
+	}
+
+	targetReached := false
+	checkpointFound := false
+
+	// Replay entries to rebuild state
+	for _, entry := range entries {
+		// If we've reached the target checkpoint, stop processing
+		if targetReached {
+			break
+		}
+
+		switch entry.Type {
+		case eventlog.EventTypeContentIn, eventlog.EventTypeContentOut:
+			content := &proto.Content{
+				Role:     getStringFromData(entry.Data, "role"),
+				Type:     getStringFromData(entry.Data, "type"),
+				Mimetype: getStringFromData(entry.Data, "mimetype"),
+				Data:     getStringFromData(entry.Data, "data"),
+			}
+			session.MessageHistory = append(session.MessageHistory, content)
+
+			// Track checkpoint ID if present
+			if entry.CheckpointID != "" {
+				session.CheckpointIDs = append(session.CheckpointIDs, entry.CheckpointID)
+
+				// Check if this is the target checkpoint
+				if checkpointID != "" && entry.CheckpointID == checkpointID {
+					targetReached = true
+					checkpointFound = true
+				}
+			}
+
+		case eventlog.EventTypeLifecycle:
+			event := &proto.LifecycleEvent{
+				EventType: getStringFromData(entry.Data, "event_type"),
+				AgentId:   getStringFromData(entry.Data, "agent_id"),
+				Timestamp: int64(entry.Data["timestamp"].(float64)),
+			}
+			session.LifecycleEvents = append(session.LifecycleEvents, event)
+		}
+
+		session.UpdatedAt = entry.Timestamp
+	}
+
+	// Validate checkpoint ID if provided
+	if checkpointID != "" && !checkpointFound {
+		return nil, fmt.Errorf("checkpoint ID %s not found in session", checkpointID)
+	}
+
+	// Reopen event log for appending using the factory
+	el, err := sm.eventLogFactory(sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to reopen event log: %w", err)
+	}
+	session.eventLog = el
+
+	sm.sessions[sessionID] = session
+	return session, nil
+}
+
+// GetSession retrieves a session by ID.
+func (sm *SessionManager) GetSession(sessionID string) (*Session, error) {
+	sm.mu.RLock()
+	defer sm.mu.RUnlock()
+
+	session, exists := sm.sessions[sessionID]
+	if !exists {
+		return nil, fmt.Errorf("session %s not found", sessionID)
+	}
+
+	return session, nil
+}
+
+// ListSessions returns all session IDs.
+// Note: This currently only works with file-based event logs.
+// TODO: Make this more generic for non-file implementations.
+func (sm *SessionManager) ListSessions() ([]string, error) {
+	return eventlog.ListSessions("eventlog")
+}
+
+// CloseSession closes a session and its event log.
+func (sm *SessionManager) CloseSession(sessionID string) error {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
+	session, exists := sm.sessions[sessionID]
+	if !exists {
+		return fmt.Errorf("session %s not found", sessionID)
+	}
+
+	if err := session.eventLog.Close(); err != nil {
+		return fmt.Errorf("failed to close event log: %w", err)
+	}
+
+	delete(sm.sessions, sessionID)
+	return nil
+}
+
+// WriteContentIn appends an incoming content message to the session with a new checkpoint.
+func (s *Session) WriteContentIn(content *proto.Content) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// Generate a new checkpoint UUID
+	checkpointID := uuid.New().String()
+
+	if err := s.eventLog.AppendContent(eventlog.EventTypeContentIn, checkpointID, content); err != nil {
+		return "", err
+	}
+
+	s.MessageHistory = append(s.MessageHistory, content)
+	s.CheckpointIDs = append(s.CheckpointIDs, checkpointID)
+	s.UpdatedAt = time.Now()
+	return checkpointID, nil
+}
+
+// WriteContentOut appends an outgoing content message to the session with a new checkpoint.
+func (s *Session) WriteContentOut(content *proto.Content) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// Generate a new checkpoint UUID
+	checkpointID := uuid.New().String()
+
+	if err := s.eventLog.AppendContent(eventlog.EventTypeContentOut, checkpointID, content); err != nil {
+		return "", err
+	}
+
+	s.MessageHistory = append(s.MessageHistory, content)
+	s.CheckpointIDs = append(s.CheckpointIDs, checkpointID)
+	s.UpdatedAt = time.Now()
+	return checkpointID, nil
+}
+
+// WriteLifecycleEvent appends a lifecycle event to the session.
+func (s *Session) WriteLifecycleEvent(event *proto.LifecycleEvent) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if err := s.eventLog.AppendLifecycleEvent(event); err != nil {
+		return err
+	}
+
+	s.LifecycleEvents = append(s.LifecycleEvents, event)
+	s.UpdatedAt = time.Now()
+	return nil
+}
+
+// SetState updates the session state.
+func (s *Session) SetState(state proto.State) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.State = state
+	s.UpdatedAt = time.Now()
+}
+
+// AdvanceStep increments the current step.
+func (s *Session) AdvanceStep() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.CurrentStep++
+	s.UpdatedAt = time.Now()
+}
+
+// Helper function to extract string from map[string]interface{}
+func getStringFromData(data map[string]interface{}, key string) string {
+	if val, ok := data[key]; ok {
+		if str, ok := val.(string); ok {
+			return str
+		}
+	}
+	return ""
+}

@@ -1,0 +1,145 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "github.com/google/gar/proto";
+
+// Content represents a message with role, type, mimetype, and data fields
+message Content {
+  string role = 1;      // The role of the content (e.g., "user", "assistant", "system")
+  string type = 2;      // The type of content (e.g., "text", "image")
+  string mimetype = 3;  // MIME type of the data (e.g., "text/plain", "image/png")
+  string data = 4;      // The actual content data
+}
+
+// LifecycleEvent represents events from agent lifecycle
+message LifecycleEvent {
+  string event_type = 1;            // Event type: "PROGRESS", "HEARTBEAT"
+  string agent_id = 2;               // Unique identifier of the agent
+  int64 timestamp = 3;               // Unix timestamp in milliseconds
+  map<string, string> metadata = 4;  // Additional event metadata
+}
+
+// HealthCheckRequest for agent health checks
+message HealthCheckRequest {
+  string agent_id = 1;
+}
+
+// HealthCheckResponse contains agent health status
+message HealthCheckResponse {
+  bool healthy = 1;
+  string message = 2;
+  map<string, string> metadata = 3;
+}
+
+// AgentService defines the gRPC service for agent communication
+service AgentService {
+  // Process handles bidirectional streaming of content between dispatcher and agent
+  rpc Process(stream Content) returns (stream Content);
+
+  // StreamLifecycle allows agents to stream lifecycle events to dispatcher
+  rpc StreamLifecycle(stream LifecycleEvent) returns (stream LifecycleEvent);
+
+  // HealthCheck checks if the agent is healthy and responsive
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+// State represents the state of a session
+enum State {
+  STATE_UNSPECIFIED = 0;  // Unspecified state
+  STATE_STARTING = 1;
+  STATE_RUNNING = 2;      // Session is currently running
+  STATE_COMPLETED = 3;    // Session completed successfully
+  STATE_FAILED = 4;       // Session failed
+  STATE_UNKNOWN = 5;
+}
+
+// TriggerSessionRequest for triggering a new session
+message TriggerSessionRequest {
+  string session_id = 1;               // Unique session identifier
+  repeated Content inputs = 2;         // Input content to process
+  string checkpoint_id = 3;            // Optional: Resume from specific checkpoint UUID (empty for latest)
+}
+
+// TriggerSessionResponse contains the result of triggering a session
+message TriggerSessionResponse {
+  string session_id = 1;
+  State state = 2;     // Session state
+  Content output = 3;
+  string checkpoint_id = 4;   // Checkpoint UUID for this response
+}
+
+
+// GetSessionRequest for retrieving session details
+message GetSessionRequest {
+  string session_id = 1;
+}
+
+// SessionInfo contains session details
+message SessionInfo {
+  string session_id = 1;
+  State state = 2;
+  int32 current_step = 3;
+  repeated string active_agents = 4;
+  int64 created_at = 5;   // Unix timestamp in milliseconds
+  int64 updated_at = 6;   // Unix timestamp in milliseconds
+  int32 message_count = 7;
+  int32 checkpoint_count = 8;
+}
+
+// GetSessionResponse contains session information
+message GetSessionResponse {
+  SessionInfo session = 1;
+}
+
+// ListSessionsRequest for listing all sessions
+message ListSessionsRequest {
+  // Empty for now, can add pagination later
+}
+
+// ListSessionsResponse contains list of session IDs
+message ListSessionsResponse {
+  repeated string session_ids = 1;
+}
+
+// RegisterAgentRequest for registering an agent
+message RegisterAgentRequest {
+  string agent_id = 1;
+  string name = 2;        // Human-readable name for the agent
+  string description = 3; // Description of agent capabilities
+  string agent_type = 4;  // "local" or "remote"
+  string address = 5;     // gRPC address for remote agents
+  map<string, string> metadata = 6;
+}
+
+// RegisterAgentResponse contains registration result
+message RegisterAgentResponse {
+}
+
+// UnregisterAgentRequest for unregistering an agent
+message UnregisterAgentRequest {
+  string agent_id = 1;
+}
+
+// UnregisterAgentResponse contains unregistration result
+message UnregisterAgentResponse {
+}
+
+// GARService defines the gRPC service for GAR operations
+service GARService {
+  // TriggerSession triggers a new agentic loop session or resumes an existing one with streaming responses
+  // If the session_id already exists, it will be resumed from the last checkpoint
+  rpc TriggerSession(TriggerSessionRequest) returns (stream TriggerSessionResponse);
+
+  // GetSession retrieves session details
+  rpc GetSession(GetSessionRequest) returns (GetSessionResponse);
+
+  // ListSessions lists all available sessions
+  rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
+
+  // RegisterAgent registers a new agent with the controller
+  rpc RegisterAgent(RegisterAgentRequest) returns (RegisterAgentResponse);
+
+  // UnregisterAgent removes an agent from the controller
+  rpc UnregisterAgent(UnregisterAgentRequest) returns (UnregisterAgentResponse);
+}
