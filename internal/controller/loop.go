@@ -13,8 +13,8 @@ type Goal struct {
 	Description string
 }
 
-// AgentTask represents a task to be executed by an agent.
-type AgentTask struct {
+// Task represents a task to be executed by an agent.
+type Task struct {
 	AgentID   string
 	Input     []*proto.Content
 	Goal      *Goal
@@ -33,11 +33,11 @@ type LoopExecutor struct {
 
 // PlanFunc determines the next agent task to execute.
 // It receives the current session state and returns the next task.
-type PlanFunc func(session *Session) (*AgentTask, error)
+type PlanFunc func(session *Session) (*Task, error)
 
 // EvaluateFunc evaluates the agent's response to determine if the goal is achieved.
 // Returns true if the goal is met and the loop should terminate.
-type EvaluateFunc func(session *Session, task *AgentTask, output []*proto.Content) (bool, error)
+type EvaluateFunc func(session *Session, task *Task, output []*proto.Content) (bool, error)
 
 // LoopConfig configures the loop executor.
 type LoopConfig struct {
@@ -188,7 +188,7 @@ func (e *LoopExecutor) runLoop(ctx context.Context, session *Session) error {
 }
 
 // executeTask sends input to an agent and collects output.
-func (e *LoopExecutor) executeTask(ctx context.Context, session *Session, ag agent.Agent, task *AgentTask) ([]*proto.Content, error) {
+func (e *LoopExecutor) executeTask(ctx context.Context, session *Session, ag agent.Agent, task *Task) ([]*proto.Content, error) {
 	var output []*proto.Content
 
 	// Define output handler to collect responses
@@ -242,7 +242,7 @@ func (e *LoopExecutor) HandleLifecycleEvent(session *Session, event *proto.Lifec
 
 // defaultEvaluateFunc is a simple default evaluation function.
 // It considers the goal achieved after processing one step.
-func defaultEvaluateFunc(session *Session, task *AgentTask, output []*proto.Content) (bool, error) {
+func defaultEvaluateFunc(session *Session, task *Task, output []*proto.Content) (bool, error) {
 	// Simple evaluation: goal achieved if we got any output
 	return len(output) > 0, nil
 }

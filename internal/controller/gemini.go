@@ -76,7 +76,7 @@ Guidelines:
 	}
 
 	// Return the plan function
-	return func(session *Session) (*AgentTask, error) {
+	return func(session *Session) (*Task, error) {
 		// Create a context with timeout
 		ctx, cancel := context.WithTimeout(context.Background(), config.Timeout)
 		defer cancel()
@@ -168,7 +168,7 @@ Guidelines:
 					},
 				}
 
-				return &AgentTask{
+				return &Task{
 					AgentID:   agentID,
 					Input:     input,
 					Goal:      &Goal{Description: "Process user request using model selected agent"},
