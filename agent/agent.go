@@ -22,7 +22,7 @@ type Agent interface {
 	// Process handles processing of input content.
 	// It calls the output handler for each piece of content generated.
 	// The handler may be called multiple times during processing.
-	Process(ctx context.Context, inputs []*proto.Content, handler OutputHandler) error
+	Process(ctx context.Context, sessionID string, inputs []*proto.Content, handler OutputHandler) error
 
 	// StreamLifecycle streams lifecycle events from the agent.
 	// It calls the handler for each lifecycle event emitted.

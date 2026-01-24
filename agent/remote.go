@@ -9,6 +9,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 
 	"github.com/google/gar/proto"
 )
@@ -85,7 +86,11 @@ func (a *RemoteAgent) connect() error {
 }
 
 // Process handles processing of input content with the remote agent.
-func (a *RemoteAgent) Process(ctx context.Context, inputs []*proto.Content, handler OutputHandler) error {
+func (a *RemoteAgent) Process(ctx context.Context, sessionID string, inputs []*proto.Content, handler OutputHandler) error {
+	// Add session_id to gRPC metadata
+	md := metadata.Pairs("session-id", sessionID)
+	ctx = metadata.NewOutgoingContext(ctx, md)
+
 	stream, err := a.client.Process(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create stream: %w", err)

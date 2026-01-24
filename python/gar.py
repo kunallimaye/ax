@@ -16,7 +16,7 @@ class Agent:
     Agent provides a simple framework for building Python agents.
 
     Usage:
-        def process(inputs):
+        def process(session_id, inputs):
             for content in inputs:
                 yield Content(role="assistant", type="text",
                              mimetype="text/plain", data=f"Processed: {content.data}")
@@ -37,7 +37,7 @@ class Agent:
 
         Args:
             agent_id: Unique identifier for this agent
-            process_func: Function that takes a list of Content and yields Content responses
+            process_func: Function that takes (session_id: str, inputs: list) and yields Content responses
             lifecycle_func: Optional function that yields LifecycleEvent objects
             health_check_func: Optional function that returns (healthy: bool, message: str, metadata: dict)
         """
@@ -52,11 +52,15 @@ class Agent:
 
         class AgentServicer(pb2_grpc.AgentServiceServicer):
             def Process(self, request_iterator, context):
+                # Extract session_id from gRPC metadata
+                metadata = dict(context.invocation_metadata())
+                session_id = metadata.get('session-id', '')
+
                 # Collect all content into a list
                 inputs = list(request_iterator)
 
-                # Process the list of content
-                for response in agent.process_func(inputs):
+                # Process the list of content with session_id
+                for response in agent.process_func(session_id, inputs):
                     if response:
                         yield response
 
@@ -137,7 +141,7 @@ def create_agent(
 
     Args:
         agent_id: Unique identifier for this agent
-        process_func: Function that takes a list of Content and yields Content responses
+        process_func: Function that takes (session_id: str, inputs: list) and yields Content responses
         lifecycle_func: Optional function that yields LifecycleEvent objects
         health_check_func: Optional function that returns (healthy: bool, message: str, metadata: dict)
         port: Port to listen on (default: 50051)

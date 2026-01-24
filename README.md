@@ -243,7 +243,7 @@ import (
 )
 
 // Define your process function using callback handler
-processFunc := func(ctx context.Context, inputs []*proto.Content, handler agent.OutputHandler) error {
+processFunc := func(ctx context.Context, sessionID string, inputs []*proto.Content, handler agent.OutputHandler) error {
     for _, content := range inputs {
         output := &proto.Content{
             Role:     "assistant",

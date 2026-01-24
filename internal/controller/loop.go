@@ -211,7 +211,7 @@ func (e *LoopExecutor) executeTask(ctx context.Context, session *Session, ag age
 	}()
 
 	// Process inputs with the agent
-	if err := ag.Process(ctx, task.Input, outputHandler); err != nil {
+	if err := ag.Process(ctx, session.ID, task.Input, outputHandler); err != nil {
 		cancelLifecycle()
 		return nil, fmt.Errorf("agent process failed: %w", err)
 	}

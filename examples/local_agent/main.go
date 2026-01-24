@@ -69,7 +69,7 @@ func main() {
 
 // createEchoAgent creates a simple echo agent that repeats input with a prefix.
 func createEchoAgent(id string) (*agent.LocalAgent, error) {
-	processFunc := func(ctx context.Context, inputs []*proto.Content, handler agent.OutputHandler) error {
+	processFunc := func(ctx context.Context, sessionID string, inputs []*proto.Content, handler agent.OutputHandler) error {
 		// Process each input and call handler with response
 		for _, content := range inputs {
 			// Echo the content back with a prefix
@@ -77,7 +77,7 @@ func createEchoAgent(id string) (*agent.LocalAgent, error) {
 				Role:     "assistant",
 				Type:     content.Type,
 				Mimetype: content.Mimetype,
-				Data:     fmt.Sprintf("Echo: %s", strings.ToUpper(content.Data)),
+				Data:     fmt.Sprintf("Echo (session %s): %s", sessionID, strings.ToUpper(content.Data)),
 			}
 
 			// Call handler with the response

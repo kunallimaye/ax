@@ -11,7 +11,7 @@ import (
 // It implements the Agent interface for agents running in the same process as the dispatcher.
 type LocalAgent struct {
 	id              string
-	processFunc     func(ctx context.Context, inputs []*proto.Content, handler OutputHandler) error
+	processFunc     func(ctx context.Context, sessionID string, inputs []*proto.Content, handler OutputHandler) error
 	lifecycleFunc   func(ctx context.Context, handler LifecycleHandler) error
 	healthCheckFunc func(ctx context.Context) error
 }
@@ -19,7 +19,7 @@ type LocalAgent struct {
 // LocalAgentConfig configures a local agent.
 type LocalAgentConfig struct {
 	ID              string
-	ProcessFunc     func(ctx context.Context, inputs []*proto.Content, handler OutputHandler) error
+	ProcessFunc     func(ctx context.Context, sessionID string, inputs []*proto.Content, handler OutputHandler) error
 	LifecycleFunc   func(ctx context.Context, handler LifecycleHandler) error
 	HealthCheckFunc func(ctx context.Context) error
 }
@@ -53,8 +53,8 @@ func NewLocalAgent(config LocalAgentConfig) (*LocalAgent, error) {
 }
 
 // Process handles processing of input content with callback handler.
-func (a *LocalAgent) Process(ctx context.Context, inputs []*proto.Content, handler OutputHandler) error {
-	return a.processFunc(ctx, inputs, handler)
+func (a *LocalAgent) Process(ctx context.Context, sessionID string, inputs []*proto.Content, handler OutputHandler) error {
+	return a.processFunc(ctx, sessionID, inputs, handler)
 }
 
 // StreamLifecycle streams lifecycle events using callback handler.
