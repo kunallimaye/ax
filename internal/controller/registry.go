@@ -177,21 +177,6 @@ func (r *Registry) List() []string {
 	return ids
 }
 
-// ListByType returns all agent IDs of a specific type.
-func (r *Registry) ListByType(agentType AgentType) []string {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	ids := make([]string, 0)
-	for id, info := range r.agentInfo {
-		if info.Type == agentType {
-			ids = append(ids, id)
-		}
-	}
-
-	return ids
-}
-
 // ListHealthy returns all healthy agent IDs.
 func (r *Registry) ListHealthy() []string {
 	r.mu.RLock()
@@ -205,30 +190,6 @@ func (r *Registry) ListHealthy() []string {
 	}
 
 	return ids
-}
-
-// SelectAgent selects an agent based on a simple load balancing strategy.
-// Currently uses round-robin among healthy agents of the specified type.
-func (r *Registry) SelectAgent(agentType AgentType) (agent.Agent, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	// Find healthy agents of the specified type
-	var candidates []string
-	for id, info := range r.agentInfo {
-		if info.Type == agentType && info.Healthy {
-			candidates = append(candidates, id)
-		}
-	}
-
-	if len(candidates) == 0 {
-		return nil, fmt.Errorf("no healthy agents of type %s available", agentType)
-	}
-
-	// Simple round-robin: return first healthy agent
-	// TODO: Implement more sophisticated load balancing
-	selectedID := candidates[0]
-	return r.agents[selectedID], nil
 }
 
 // HealthCheck performs a health check on a specific agent.
