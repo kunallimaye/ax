@@ -37,6 +37,8 @@ func init() {
 	triggerCmd.MarkFlagRequired("input")
 }
 
+// TODO(jbd): Add multimodal input flags, e.g. --input-image.
+
 func runTrigger(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
