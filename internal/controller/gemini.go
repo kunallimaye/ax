@@ -78,9 +78,9 @@ Guidelines:
 	}
 
 	// Return the plan function
-	return func(session *Session) (*Task, error) {
+	return func(ctx context.Context, session *Session) (*Task, error) {
 		// Create a context with timeout
-		ctx, cancel := context.WithTimeout(context.Background(), config.Timeout)
+		ctx, cancel := context.WithTimeout(ctx, config.Timeout)
 		defer cancel()
 
 		// Get healthy agents

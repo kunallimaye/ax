@@ -33,11 +33,11 @@ type LoopExecutor struct {
 
 // PlanFunc determines the next agent task to execute.
 // It receives the current session state and returns the next task.
-type PlanFunc func(session *Session) (*Task, error)
+type PlanFunc func(ctx context.Context, session *Session) (*Task, error)
 
 // EvaluateFunc evaluates the agent's response to determine if the goal is achieved.
 // Returns true if the goal is met and the loop should terminate.
-type EvaluateFunc func(session *Session, task *Task, output []*proto.Content) (bool, error)
+type EvaluateFunc func(ctx context.Context, session *Session, task *Task, output []*proto.Content) (bool, error)
 
 // LoopConfig configures the loop executor.
 type LoopConfig struct {
@@ -139,7 +139,7 @@ func (e *LoopExecutor) runLoop(ctx context.Context, session *Session) error {
 		}
 
 		// Phase 1: Plan - Determine next agent and action
-		task, err := e.planFunc(session)
+		task, err := e.planFunc(ctx, session)
 		if err != nil {
 			session.SetState(proto.State_STATE_FAILED)
 			return fmt.Errorf("planning failed: %w", err)
@@ -166,7 +166,7 @@ func (e *LoopExecutor) runLoop(ctx context.Context, session *Session) error {
 		}
 
 		// Phase 3: Evaluate - Check if goal achieved
-		goalAchieved, err := e.evaluateFunc(session, task, output)
+		goalAchieved, err := e.evaluateFunc(ctx, session, task, output)
 		if err != nil {
 			session.SetState(proto.State_STATE_FAILED)
 			return fmt.Errorf("evaluation failed: %w", err)
@@ -229,7 +229,7 @@ func (e *LoopExecutor) executeTask(ctx context.Context, session *Session, ag age
 
 // defaultEvaluateFunc is a simple default evaluation function.
 // It considers the goal achieved after processing one step.
-func defaultEvaluateFunc(session *Session, task *Task, output []*proto.Content) (bool, error) {
+func defaultEvaluateFunc(ctx context.Context, session *Session, task *Task, output []*proto.Content) (bool, error) {
 	// Simple evaluation: goal achieved if we got any output
 	return len(output) > 0, nil
 }
