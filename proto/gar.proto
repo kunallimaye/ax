@@ -40,6 +40,7 @@ enum State {
   STATE_UNSPECIFIED = 0;  // Unspecified state
   STATE_RUNNING = 1;      // Session is currently running
   STATE_FAILED = 2;       // Session failed
+  STATE_COMPLETED = 3;    // Completed, can accept new triggers
 
   // TODO(jbd): Add STATE_COMPLETED and only allow triggers if
   // the state is STATE_UNSPECIFIED or STATE_COMPLETED.

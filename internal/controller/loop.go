@@ -84,6 +84,10 @@ func NewLoopExecutor(ctx context.Context, config LoopConfig) (*LoopExecutor, err
 	}, nil
 }
 
+func (e *LoopExecutor) stateRunnable(sesion *Session) bool {
+	return sesion.State() == proto.State_STATE_RUNNING || sesion.State() == proto.State_STATE_UNSPECIFIED
+}
+
 // Execute starts a new agentic loop execution for the given session.
 func (e *LoopExecutor) Execute(ctx context.Context, sessionID string, inputs []*proto.Content) error {
 	// Get or create session
@@ -92,32 +96,17 @@ func (e *LoopExecutor) Execute(ctx context.Context, sessionID string, inputs []*
 		return fmt.Errorf("failed to get session: %w", err)
 	}
 
+	if !e.stateRunnable(session) {
+		return fmt.Errorf("session is not in a runnable state")
+	}
+
+	session.SetState(proto.State_STATE_RUNNING)
 	// Write input content to session
 	for _, content := range inputs {
 		if _, err := session.WriteContentIn(ctx, content); err != nil {
 			return fmt.Errorf("failed to write input content: %w", err)
 		}
 	}
-
-	return e.runLoop(ctx, session)
-}
-
-// Resume continues an existing session from its last checkpoint.
-func (e *LoopExecutor) Resume(ctx context.Context, sessionID string) error {
-	// Load session from event log
-	session, err := e.sessionManager.LoadSession(sessionID)
-	if err != nil {
-		return fmt.Errorf("failed to load session: %w", err)
-	}
-
-	// Check if session is in a resumable state
-	if session.State == proto.State_STATE_FAILED {
-		return fmt.Errorf("session failed and cannot be resumed")
-	}
-
-	// Update state to running
-	session.SetState(proto.State_STATE_RUNNING)
-
 	return e.runLoop(ctx, session)
 }
 

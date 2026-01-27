@@ -15,7 +15,6 @@ import (
 // It maintains in-memory state and uses event log for durability.
 type Session struct {
 	ID             string
-	State          proto.State
 	ActiveAgents   []string
 	MessageHistory []*proto.Content
 	CheckpointIDs  []string // Ordered list of checkpoint UUIDs
@@ -25,6 +24,7 @@ type Session struct {
 	mu          sync.RWMutex
 	eventLog    eventlog.EventLog
 	currentStep int
+	state       proto.State
 }
 
 // EventLogFactory is a function that creates EventLog instances for sessions.
@@ -64,7 +64,7 @@ func (sm *SessionManager) NewSession(sessionID string) (*Session, error) {
 	now := time.Now()
 	session := &Session{
 		ID:             sessionID,
-		State:          proto.State_STATE_RUNNING,
+		state:          proto.State_STATE_UNSPECIFIED,
 		currentStep:    0,
 		ActiveAgents:   []string{},
 		MessageHistory: []*proto.Content{},
@@ -109,7 +109,7 @@ func (sm *SessionManager) LoadSessionFromCheckpoint(sessionID string, checkpoint
 	// Reconstruct session state from event log
 	session := &Session{
 		ID:             sessionID,
-		State:          proto.State_STATE_RUNNING,
+		state:          proto.State_STATE_UNSPECIFIED,
 		currentStep:    0,
 		ActiveAgents:   []string{},
 		MessageHistory: []*proto.Content{},
@@ -267,8 +267,15 @@ func (s *Session) SetState(state proto.State) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.State = state
+	s.state = state
 	s.UpdatedAt = time.Now()
+}
+
+func (s *Session) State() proto.State {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.state
 }
 
 // AdvanceStep increments the current step.
