@@ -54,6 +54,7 @@ func main() {
 
 	if err := c.Registry().RegisterLocal(
 		echoAgent,
+		"local-echo-agent",
 		"Echo Agent",
 		"Simple echo agent that uppercases input",
 		map[string]string{

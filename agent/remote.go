@@ -31,7 +31,6 @@ import (
 // RemoteAgent is a gRPC client that implements the Agent interface.
 // It communicates with remote agent services over gRPC.
 type RemoteAgent struct {
-	id         string
 	address    string
 	conn       *grpc.ClientConn
 	client     proto.AgentServiceClient
@@ -43,7 +42,6 @@ type RemoteAgent struct {
 
 // RemoteAgentConfig configures a remote agent client.
 type RemoteAgentConfig struct {
-	ID         string
 	Address    string            // gRPC server address (e.g., "localhost:50051")
 	Reconnect  bool              // Whether to automatically reconnect on failures
 	MaxRetries int               // Maximum number of retry attempts (0 = infinite)
@@ -52,15 +50,11 @@ type RemoteAgentConfig struct {
 
 // NewRemoteAgent creates a new remote agent client.
 func NewRemoteAgent(config RemoteAgentConfig) (*RemoteAgent, error) {
-	if config.ID == "" {
-		return nil, fmt.Errorf("agent ID cannot be empty")
-	}
 	if config.Address == "" {
 		return nil, fmt.Errorf("agent address cannot be empty")
 	}
 
 	agent := &RemoteAgent{
-		id:         config.ID,
 		address:    config.Address,
 		reconnect:  config.Reconnect,
 		maxRetries: config.MaxRetries,
@@ -162,11 +156,6 @@ func (a *RemoteAgent) HealthCheck(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-// ID returns the unique identifier for this agent.
-func (a *RemoteAgent) ID() string {
-	return a.id
 }
 
 // Close gracefully shuts down the remote agent connection.

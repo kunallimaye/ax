@@ -67,11 +67,6 @@ func (a *LocalAgent) HealthCheck(ctx context.Context) error {
 	return a.healthCheckFunc(ctx)
 }
 
-// ID returns the unique identifier for this agent.
-func (a *LocalAgent) ID() string {
-	return a.id
-}
-
 // Close gracefully shuts down the agent.
 func (a *LocalAgent) Close() error {
 	// Local agents don't typically need cleanup, but this can be extended

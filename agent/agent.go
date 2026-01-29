@@ -38,9 +38,6 @@ type Agent interface {
 	// Returns an error if the agent is unhealthy or unreachable.
 	HealthCheck(ctx context.Context) error
 
-	// ID returns the unique identifier for this agent.
-	ID() string
-
 	// Close gracefully shuts down the agent and releases resources.
 	Close() error
 }
