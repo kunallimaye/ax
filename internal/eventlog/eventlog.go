@@ -57,3 +57,6 @@ type EventLog interface {
 	// SessionID returns the session ID for this event log.
 	SessionID() string
 }
+
+// EventLogFactory is a function that creates EventLog instances for sessions.
+type EventLogFactory func(sessionID string) (EventLog, error)

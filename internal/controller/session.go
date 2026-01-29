@@ -42,18 +42,15 @@ type Session struct {
 	updatedAt time.Time
 }
 
-// EventLogFactory is a function that creates EventLog instances for sessions.
-type EventLogFactory func(sessionID string) (eventlog.EventLog, error)
-
 // SessionManager manages multiple sessions.
 type SessionManager struct {
 	mu              sync.RWMutex
 	sessions        map[string]*Session
-	eventLogFactory EventLogFactory
+	eventLogFactory eventlog.EventLogFactory
 }
 
 // NewSessionManager creates a new session manager with a custom EventLog factory.
-func NewSessionManager(factory EventLogFactory) *SessionManager {
+func NewSessionManager(factory eventlog.EventLogFactory) *SessionManager {
 	return &SessionManager{
 		sessions:        make(map[string]*Session),
 		eventLogFactory: factory,

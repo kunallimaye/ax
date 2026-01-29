@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/google/gar/agent"
+	"github.com/google/gar/internal/eventlog"
 	"github.com/google/gar/proto"
 )
 
@@ -35,7 +36,7 @@ type Controller struct {
 
 // Config configures the controller.
 type Config struct {
-	EventLogFactory EventLogFactory
+	EventLogFactory eventlog.EventLogFactory
 	PlanFunc        PlanFunc
 	EvaluateFunc    EvaluateFunc
 
