@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"strings"
@@ -28,8 +29,16 @@ import (
 	"github.com/google/uuid"
 )
 
+var (
+	sessionID string
+	input     string
+)
+
 func main() {
 	ctx := context.Background()
+	flag.StringVar(&input, "input", "Hello, uppercase this message!", "Input message to be processed by the agent")
+	flag.StringVar(&sessionID, "session_id", "", "Optional session ID")
+	flag.Parse()
 
 	// Create a local echo agent
 	echoAgent, err := createEchoAgent()
@@ -63,13 +72,15 @@ func main() {
 			Role:     "user",
 			Type:     "text",
 			Mimetype: "text/plain",
-			Data:     "Hello, uppercase my message!",
+			Data:     input,
 		},
 	}
 
 	// Trigger a session. Alternatively, controller can be used
 	// with the server package to expose a gRPC server.
-	sessionID := uuid.New().String()
+	if sessionID == "" {
+		sessionID = uuid.New().String()
+	}
 	log.Printf("Session ID: %s\n", sessionID)
 
 	handler := agent.OutputHandler(func(content *proto.Content) error {
