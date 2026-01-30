@@ -57,6 +57,14 @@ func New(ctx context.Context, config Config) (*Controller, error) {
 	if config.HealthCheckInterval == 0 {
 		config.HealthCheckInterval = 30 * time.Second
 	}
+	if config.EventLogFactory == nil {
+		config.EventLogFactory = func(sessionID string) (eventlog.EventLog, error) {
+			return eventlog.NewFileEventLog(eventlog.FileConfig{
+				SessionID: sessionID,
+				Dir:       "eventlog",
+			})
+		}
+	}
 
 	// Initialize session manager with file-based event logs
 	sessionManager := NewSessionManager(config.EventLogFactory)

@@ -24,7 +24,6 @@ import (
 	"github.com/google/gar/agent"
 	"github.com/google/gar/internal/config"
 	"github.com/google/gar/internal/controller"
-	"github.com/google/gar/internal/eventlog"
 	"github.com/google/gar/proto"
 	"github.com/google/uuid"
 )
@@ -39,12 +38,6 @@ func main() {
 	}
 
 	c, err := controller.New(ctx, controller.Config{
-		EventLogFactory: func(sessionID string) (eventlog.EventLog, error) {
-			return eventlog.NewFileEventLog(eventlog.FileConfig{
-				SessionID: sessionID,
-				Dir:       "eventlog",
-			})
-		},
 		MaxSteps:            10,
 		HealthCheckInterval: 30 * time.Second,
 	})
