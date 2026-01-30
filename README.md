@@ -237,7 +237,7 @@ Event logs use JSON Lines format (one JSON object per line). Each entry includes
 **Event Types:**
 - `CONTENT_IN`: Incoming content from user or external source (includes `checkpoint_id`)
 - `CONTENT_OUT`: Outgoing content from agents (includes `checkpoint_id`)
-- `LIFECYCLE`: Agent lifecycle events (no checkpoint)
+- `STATE`: Session state changes, e.g. running, completed, failed.
 
 ## Building Custom Agents
 
