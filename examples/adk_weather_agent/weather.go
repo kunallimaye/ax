@@ -22,7 +22,7 @@ import (
 	"net/url"
 	"time"
 
-	"google.golang.org/adk/agent"
+	"google.golang.org/adk/v2/agent"
 )
 
 // weatherInput is the get_weather tool's argument schema (inferred by ADK from
@@ -42,7 +42,9 @@ type weatherOutput struct {
 
 // getWeather is the tool handler. It uses the keyless Open-Meteo APIs (geocoding
 // + current forecast) so it returns live data with no API key or secret.
-func getWeather(ctx agent.ToolContext, in weatherInput) (weatherOutput, error) {
+//
+// ADK v2 unified ToolContext/CallbackContext into a single agent.Context.
+func getWeather(ctx agent.Context, in weatherInput) (weatherOutput, error) {
 	lat, lon, resolved, err := geocode(ctx, in.City)
 	if err != nil {
 		return weatherOutput{}, err

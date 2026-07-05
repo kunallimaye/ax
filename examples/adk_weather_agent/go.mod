@@ -8,7 +8,7 @@ go 1.26.3
 
 require (
 	github.com/google/ax v0.0.0
-	google.golang.org/adk v1.5.0
+	google.golang.org/adk/v2 v2.0.0
 	google.golang.org/genai v1.62.0
 	google.golang.org/grpc v1.81.1
 )
