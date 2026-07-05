@@ -19,16 +19,22 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/google/ax/internal/harness"
 	"gopkg.in/yaml.v3"
 )
 
 const (
-	// The substrate namespace reserved for AX's built-in harnesses.
+	// defaultNamespace is the substrate namespace reserved for AX's built-in
+	// harnesses.
 	defaultNamespace = "ax"
-	// The port for harnesses running as substrate actors. Substrate's
-	// actor networking DNATs inbound workerPodIP:80 to the actor.
+	// substrateDefaultPort is the port for harnesses running as substrate
+	// actors. Substrate's actor networking DNATs inbound workerPodIP:80 to the
+	// actor.
 	substrateDefaultPort = 80
+
+	// Runtime names.
+	RuntimeLocal     = "local"
+	RuntimeSubstrate = "substrate"
+	RuntimeCloudRun  = "cloudrun"
 )
 
 // Config represents the main configuration for the AX harness server.
@@ -36,6 +42,7 @@ type Config struct {
 	Version   string          `yaml:"version"`
 	Server    ServerConfig    `yaml:"server"`
 	EventLog  EventLogConfig  `yaml:"eventlog"`
+	Runtime   RuntimeConfig   `yaml:"runtime,omitempty"`
 	Harnesses HarnessesConfig `yaml:"harnesses,omitempty"`
 	Telemetry TelemetryConfig `yaml:"telemetry,omitempty"`
 }
@@ -72,20 +79,71 @@ type EventLogConfig struct {
 	PostgresConfig PostgresConfig `yaml:"postgres,omitempty"`
 }
 
-// HarnessesConfig groups harnesses to serve by type. There are two categories:
-//   - Built-in harnesses (e.g. Antigravity) whose implementation and container
-//     image are provided by AX.
+// RuntimeConfig configures the available runtimes (substrates) and selects the
+// default. A harness may override the default by declaring its own runtime
+// requirement; the per-harness requirement always wins.
+type RuntimeConfig struct {
+	// Default is the runtime used when a harness declares no requirement.
+	// One of: "local", "substrate", "cloudrun". Empty implies "local".
+	Default string `yaml:"default,omitempty"`
+
+	CloudRun  CloudRunRuntimeConfig  `yaml:"cloudrun,omitempty"`
+	Substrate SubstrateRuntimeConfig `yaml:"substrate,omitempty"`
+	Local     LocalRuntimeConfig     `yaml:"local,omitempty"`
+}
+
+// CloudRunRuntimeConfig configures the Cloud Run runtime.
+type CloudRunRuntimeConfig struct {
+	Project string `yaml:"project,omitempty"` // GCP project ID
+	Region  string `yaml:"region,omitempty"`  // Cloud Run region, e.g. "us-central1"
+	Service string `yaml:"service,omitempty"` // Cloud Run service name backing the agent template
+	// AllowUnauthenticated, when true, indicates the target Cloud Run service
+	// permits unauthenticated invocations, so AX will not attach an identity
+	// token. Default (false) uses IAM ID-token auth (production-recommended).
+	AllowUnauthenticated bool `yaml:"allowUnauthenticated,omitempty"`
+}
+
+// SubstrateRuntimeConfig configures the Agent Substrate (ATE) runtime.
+type SubstrateRuntimeConfig struct {
+	ControlEndpoint string `yaml:"controlEndpoint,omitempty"` // ATE control-plane target
+	Namespace       string `yaml:"namespace,omitempty"`       // Atespace/namespace for actors
+	Template        string `yaml:"template,omitempty"`        // ActorTemplate name
+	Port            int    `yaml:"port,omitempty"`            // HarnessService port on the actor
+}
+
+// LocalRuntimeConfig configures the local (fixed-address) runtime.
+type LocalRuntimeConfig struct {
+	Address string `yaml:"address,omitempty"` // HarnessService address, e.g. "127.0.0.1:50053"
+}
+
+// HarnessesConfig groups harnesses to serve. There are two categories:
+//   - Built-in harnesses (e.g. Antigravity, ADK) whose implementation and
+//     container image are provided by AX.
 //   - Custom harnesses on substrate whose implementation and container image are
 //     provided by the user via their own ActorTemplate.
 type HarnessesConfig struct {
 	Antigravity AntigravityHarnessConfig `yaml:"antigravity,omitempty"`
+	ADK         ADKHarnessConfig         `yaml:"adk,omitempty"`
 	Substrate   []SubstrateHarnessConfig `yaml:"substrate,omitempty"`
 }
 
 // AntigravityHarnessConfig registers the built-in Antigravity harness.
 type AntigravityHarnessConfig struct {
+	Enabled  bool   `yaml:"enabled,omitempty"`
 	Default  bool   `yaml:"default,omitempty"`
-	Endpoint string `yaml:"endpoint,omitempty"` // HarnessService address
+	Endpoint string `yaml:"endpoint,omitempty"` // HarnessService address (local runtime)
+	Runtime  string `yaml:"runtime,omitempty"`  // Optional per-agent runtime requirement
+}
+
+// ADKHarnessConfig registers the built-in ADK (Agent Development Kit) harness.
+// The ADK agent runs as a container implementing the HarnessService gRPC
+// contract. It defaults to the configured default runtime unless it declares a
+// runtime requirement.
+type ADKHarnessConfig struct {
+	Enabled bool   `yaml:"enabled,omitempty"`
+	Default bool   `yaml:"default,omitempty"`
+	Image   string `yaml:"image,omitempty"`   // Container image for the ADK agent
+	Runtime string `yaml:"runtime,omitempty"` // Optional per-agent runtime requirement
 }
 
 // SubstrateHarnessConfig registers a custom harness deployed on substrate
@@ -96,25 +154,6 @@ type SubstrateHarnessConfig struct {
 	Template  string `yaml:"template"`          // ActorTemplate name
 	Port      int    `yaml:"port,omitempty"`    // HarnessService port
 	Default   bool   `yaml:"default,omitempty"` // Default harness or not
-}
-
-// NewHarness builds the custom harness. Custom harnesses always run as substrate
-// actors from the user's own ActorTemplate.
-func (c SubstrateHarnessConfig) NewHarness(endpoint string) (harness.Harness, error) {
-	port := c.Port
-	if port == 0 {
-		port = substrateDefaultPort
-	}
-	return newSubstrateHarness(c.ID, endpoint, c.Namespace, c.Template, port)
-}
-
-// newSubstrateHarness brings up a harness that is deployed as a substrate actor.
-func newSubstrateHarness(harnessID, endpoint, namespace, template string, port int) (harness.Harness, error) {
-	sh, err := harness.NewSubstrateHarness(harnessID, endpoint, namespace, template, port)
-	if err != nil {
-		return nil, err
-	}
-	return sh, nil
 }
 
 // LoadFromFile loads configuration from a YAML file.
@@ -149,6 +188,9 @@ func (c *Config) setDefaults() {
 	if c.EventLog.SQLiteConfig.Filename == "" {
 		c.EventLog.SQLiteConfig.Filename = "eventlog/log.sqlite"
 	}
+	if c.Runtime.Default == "" {
+		c.Runtime.Default = RuntimeLocal
+	}
 }
 
 // Validate validates the configuration.
@@ -160,8 +202,32 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("eventlog requires either postgres.dsn or sqlite.filename")
 	}
 
+	// Validate the default runtime name.
+	switch c.Runtime.Default {
+	case RuntimeLocal, RuntimeSubstrate, RuntimeCloudRun:
+	default:
+		return fmt.Errorf("runtime.default %q is invalid (want one of local, substrate, cloudrun)", c.Runtime.Default)
+	}
+
+	// If cloudrun is the default (or referenced), it needs project+region+service.
+	if c.Runtime.Default == RuntimeCloudRun {
+		if err := c.validateCloudRun(); err != nil {
+			return err
+		}
+	}
+
+	if err := validateRuntimeRequirement("antigravity", c.Harnesses.Antigravity.Runtime); err != nil {
+		return err
+	}
+	if err := validateRuntimeRequirement("adk", c.Harnesses.ADK.Runtime); err != nil {
+		return err
+	}
+
 	var defaultCount int
 	if c.Harnesses.Antigravity.Default {
+		defaultCount++
+	}
+	if c.Harnesses.ADK.Default {
 		defaultCount++
 	}
 
@@ -171,6 +237,9 @@ func (c *Config) Validate() error {
 		}
 		if sc.ID == "antigravity" {
 			return fmt.Errorf("substrate harness id %q is reserved for the built-in antigravity harness", sc.ID)
+		}
+		if sc.ID == "adk" {
+			return fmt.Errorf("substrate harness id %q is reserved for the built-in adk harness", sc.ID)
 		}
 		if sc.Namespace == "" {
 			return fmt.Errorf("substrate harness %q: namespace is required", sc.ID)
@@ -192,3 +261,29 @@ func (c *Config) Validate() error {
 
 	return nil
 }
+
+func (c *Config) validateCloudRun() error {
+	cr := c.Runtime.CloudRun
+	if cr.Project == "" {
+		return fmt.Errorf("runtime.cloudrun.project is required when cloudrun runtime is used")
+	}
+	if cr.Region == "" {
+		return fmt.Errorf("runtime.cloudrun.region is required when cloudrun runtime is used")
+	}
+	if cr.Service == "" {
+		return fmt.Errorf("runtime.cloudrun.service is required when cloudrun runtime is used")
+	}
+	return nil
+}
+
+func validateRuntimeRequirement(harnessID, req string) error {
+	switch req {
+	case "", RuntimeLocal, RuntimeSubstrate, RuntimeCloudRun:
+		return nil
+	default:
+		return fmt.Errorf("harness %q: runtime requirement %q is invalid (want one of local, substrate, cloudrun)", harnessID, req)
+	}
+}
+
+// SubstrateDefaultPort returns the default substrate port for use by wiring code.
+func SubstrateDefaultPort() int { return substrateDefaultPort }

@@ -43,6 +43,7 @@ var (
 	execConfigFile        string
 	execResume            bool // allow resuming an execution without inputs
 	execLastSeq           int32
+	execOnce              bool // run a single turn non-interactively and exit
 )
 
 var execCmd = &cobra.Command{
@@ -63,6 +64,7 @@ func init() {
 	execCmd.Flags().StringVar(&execServerAddr, "server", "", "gRPC controller server address (if specified, connects to remote server; otherwise runs with a local built-in AX server)")
 	execCmd.Flags().StringVar(&execConfigFile, "config", "ax.yaml", "Path to YAML configuration file (only used with a local built-in AX server)")
 	execCmd.Flags().BoolVar(&execResume, "resume", false, "Resume a conversation without inputs")
+	execCmd.Flags().BoolVar(&execOnce, "once", false, "Run a single turn non-interactively using --input, then exit (headless)")
 	execCmd.Flags().Int32Var(&execLastSeq, "last-seq", 0, "Last sequence number seen by the client")
 	execCmd.MarkFlagsMutuallyExclusive("input", "resume")
 	execCmd.MarkFlagsMutuallyExclusive("harness-config", "harness-config-json")
@@ -140,6 +142,31 @@ func runExec(cmd *cobra.Command, args []string) error {
 func execLoop(ctx context.Context, id string, harnessID string, harnessConfig []byte, input string, lastSeq int32) error {
 	d := internal.NewDisplay(id, os.Stdout)
 	d.DisplayHeader()
+
+	// Headless single-shot mode: run exactly one turn with --input and exit.
+	// This is the non-interactive path used by automation (e.g. run-on-run).
+	if execOnce {
+		if strings.TrimSpace(input) == "" {
+			return fmt.Errorf("--once requires a non-empty --input")
+		}
+		d.DisplayInput(input)
+		inputs := []*proto.Message{{
+			Role: "user",
+			Content: &proto.Content{
+				Type: &proto.Content_Text{
+					Text: &proto.TextContent{Text: input},
+				},
+			},
+		}}
+		_, err := runAutoExec(ctx, d, &proto.ExecRequest{
+			ConversationId: id,
+			HarnessId:      harnessID,
+			HarnessConfig:  harnessConfig,
+			Inputs:         inputs,
+			LastSeq:        lastSeq,
+		})
+		return err
+	}
 
 	var inputs []*proto.Message
 	if !execResume {

@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Sample LOCAL configuration for the AX *harness* build (compiled with -tags=harness).
+# Sample configuration for the AX harness server.
 # Usage:  ax serve --config ax.yaml
 #         ax exec  --config ax.yaml --input "hello"   # uses harnesses.default
+#         ax exec  --once --config ax.yaml --input "..."  # headless single turn
 version: v1alpha
 
 server:
@@ -24,10 +25,40 @@ eventlog:
   sqlite:
     filename: "eventlog/log.sqlite"
 
+# Runtime selects WHERE/HOW agent endpoints run. `default` is the deployment
+# policy; a harness may override it with its own `runtime:` requirement (the
+# per-agent requirement always wins). This replaces the deprecated AX_SUBSTRATE
+# environment toggle.
+runtime:
+  # One of: cloudrun | substrate | local. Cloud Run is the default substrate.
+  default: cloudrun
+  cloudrun:
+    project: kunal-scratch      # GCP project ID
+    region: us-central1         # Cloud Run region
+    service: ax-adk-weather     # Cloud Run service backing the agent template
+  # substrate:
+  #   controlEndpoint: api.ate-system.svc:443
+  #   namespace: ax
+  #   template: ax-harness-template
+  # local:
+  #   address: 127.0.0.1:50053
+
 harnesses:
-  antigravity:
+  # Google ADK (Agent Development Kit) for Go agent, served as a container that
+  # implements the HarnessService gRPC contract. Runs on runtime.default
+  # (cloudrun) unless it declares its own `runtime:` requirement.
+  adk:
+    enabled: true
     default: true
+    image: "us-central1-docker.pkg.dev/kunal-scratch/ax/adk-weather-agent:latest"
+
+  # Built-in Antigravity agent. Example of pinning an agent to a specific runtime
+  # via a per-agent requirement (stateful agents that cannot externalize state
+  # should stay on substrate):
+  # antigravity:
+  #   enabled: true
+  #   runtime: substrate
 
 telemetry:
   otlp:
-    enabled: true
+    enabled: false

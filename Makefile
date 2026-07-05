@@ -1,4 +1,4 @@
-.PHONY: all build proto test clean install images
+.PHONY: all build proto test clean install images run-on-run deploy-adk-cloudrun teardown-cloudrun
 
 # Default container registry for docker
 export KO_DOCKER_REPO ?= gcr.io/ax-container-images
@@ -46,6 +46,21 @@ install:
 # Run remote agent example
 run-remote:
 	@go run ./examples/remote_agent
+
+# Run a single prompt end-to-end against the ADK agent on Cloud Run.
+# Deploys the agent (if needed) and executes one turn via the cloudrun runtime.
+# Usage: make run-on-run PROMPT="what is the weather in London, England?"
+# All automation lives in scripts/; this target only delegates.
+run-on-run:
+	@scripts/run-on-run.sh "$(PROMPT)"
+
+# Build + push + deploy the ADK weather agent to Cloud Run.
+deploy-adk-cloudrun:
+	@scripts/deploy-adk-cloudrun.sh
+
+# Remove the Cloud Run service (and image with AX_DELETE_IMAGE=1).
+teardown-cloudrun:
+	@scripts/teardown-cloudrun.sh
 
 # Install dependencies
 deps:

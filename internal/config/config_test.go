@@ -21,13 +21,41 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func TestSubstrateNewHarness(t *testing.T) {
-	h, err := SubstrateHarnessConfig{ID: "c", Namespace: "team-ns", Template: "custom-template"}.NewHarness("api.ate-system.svc:443")
-	if err != nil {
-		t.Fatalf("NewHarness: %v", err)
+func TestValidate_DefaultRuntimeIsLocal(t *testing.T) {
+	c := DefaultConfig()
+	if c.Runtime.Default != RuntimeLocal {
+		t.Fatalf("default runtime = %q, want %q", c.Runtime.Default, RuntimeLocal)
 	}
-	if h == nil {
-		t.Fatal("expected non-nil harness")
+}
+
+func TestValidate_InvalidRuntimeDefault(t *testing.T) {
+	c := validConfig()
+	c.Runtime.Default = "bogus"
+	err := c.Validate()
+	if err == nil || !strings.Contains(err.Error(), "runtime.default") {
+		t.Fatalf("Validate() = %v, want runtime.default error", err)
+	}
+}
+
+func TestValidate_CloudRunRequiresFields(t *testing.T) {
+	c := validConfig()
+	c.Runtime.Default = RuntimeCloudRun
+	err := c.Validate()
+	if err == nil || !strings.Contains(err.Error(), "runtime.cloudrun") {
+		t.Fatalf("Validate() = %v, want cloudrun-required error", err)
+	}
+	c.Runtime.CloudRun = CloudRunRuntimeConfig{Project: "p", Region: "us-central1", Service: "svc"}
+	if err := c.Validate(); err != nil {
+		t.Fatalf("Validate() with cloudrun fields = %v, want nil", err)
+	}
+}
+
+func TestValidate_InvalidRuntimeRequirement(t *testing.T) {
+	c := validConfig()
+	c.Harnesses.ADK.Runtime = "nope"
+	err := c.Validate()
+	if err == nil || !strings.Contains(err.Error(), "runtime requirement") {
+		t.Fatalf("Validate() = %v, want runtime-requirement error", err)
 	}
 }
 

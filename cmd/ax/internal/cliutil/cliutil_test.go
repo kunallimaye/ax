@@ -17,7 +17,6 @@ package cliutil
 import (
 	"context"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/google/ax/internal/config"
@@ -29,6 +28,10 @@ func TestNewControllerFromConfig_DefaultHarness(t *testing.T) {
 			SQLiteConfig: config.SQLiteConfig{
 				Filename: filepath.Join(t.TempDir(), "log.sqlite"),
 			},
+		},
+		Runtime: config.RuntimeConfig{
+			Default: config.RuntimeLocal,
+			Local:   config.LocalRuntimeConfig{Address: "localhost:50053"},
 		},
 		Harnesses: config.HarnessesConfig{
 			Antigravity: config.AntigravityHarnessConfig{
@@ -48,7 +51,35 @@ func TestNewControllerFromConfig_DefaultHarness(t *testing.T) {
 	c.Close()
 }
 
-func TestNewControllerFromConfig_BuiltinSubstrate(t *testing.T) {
+func TestNewControllerFromConfig_ADKHarnessOnLocal(t *testing.T) {
+	cfg := &config.Config{
+		EventLog: config.EventLogConfig{
+			SQLiteConfig: config.SQLiteConfig{
+				Filename: filepath.Join(t.TempDir(), "log.sqlite"),
+			},
+		},
+		Runtime: config.RuntimeConfig{
+			Default: config.RuntimeLocal,
+			Local:   config.LocalRuntimeConfig{Address: "localhost:50053"},
+		},
+		Harnesses: config.HarnessesConfig{
+			ADK: config.ADKHarnessConfig{Enabled: true, Default: true},
+		},
+	}
+
+	c, err := NewControllerFromConfig(context.Background(), cfg)
+	if err != nil {
+		t.Fatalf("NewControllerFromConfig: %v", err)
+	}
+	if c == nil {
+		t.Fatal("expected non-nil controller")
+	}
+	c.Close()
+}
+
+func TestNewControllerFromConfig_BuiltinSubstrateViaLegacyEnv(t *testing.T) {
+	// AX_SUBSTRATE=1 is deprecated but still forces built-in harnesses onto the
+	// substrate runtime for backward compatibility.
 	t.Setenv("AX_SUBSTRATE", "1")
 
 	cfg := &config.Config{
@@ -57,6 +88,7 @@ func TestNewControllerFromConfig_BuiltinSubstrate(t *testing.T) {
 				Filename: filepath.Join(t.TempDir(), "log.sqlite"),
 			},
 		},
+		Runtime: config.RuntimeConfig{Default: config.RuntimeLocal},
 		Harnesses: config.HarnessesConfig{
 			Antigravity: config.AntigravityHarnessConfig{
 				Default: true,
@@ -74,7 +106,9 @@ func TestNewControllerFromConfig_BuiltinSubstrate(t *testing.T) {
 	c.Close()
 }
 
-func TestNewControllerFromConfig_CustomHarnessRequiresSubstrateMode(t *testing.T) {
+func TestNewControllerFromConfig_CustomHarnessOnSubstrateRuntime(t *testing.T) {
+	// In the new design custom substrate harnesses always run on the substrate
+	// runtime by construction; no AX_SUBSTRATE=1 is required.
 	t.Setenv("AX_SUBSTRATE", "")
 
 	cfg := &config.Config{
@@ -83,31 +117,7 @@ func TestNewControllerFromConfig_CustomHarnessRequiresSubstrateMode(t *testing.T
 				Filename: filepath.Join(t.TempDir(), "log.sqlite"),
 			},
 		},
-		Harnesses: config.HarnessesConfig{
-			Substrate: []config.SubstrateHarnessConfig{
-				{ID: "custom", Namespace: "team-ns", Template: "custom-template"},
-			},
-		},
-	}
-
-	_, err := NewControllerFromConfig(context.Background(), cfg)
-	if err == nil {
-		t.Fatal("expected error for custom substrate harness without AX_SUBSTRATE=1, got nil")
-	}
-	if !strings.Contains(err.Error(), "AX_SUBSTRATE=1") {
-		t.Errorf("expected error to mention AX_SUBSTRATE=1, got: %v", err)
-	}
-}
-
-func TestNewControllerFromConfig_CustomHarnessInSubstrateMode(t *testing.T) {
-	t.Setenv("AX_SUBSTRATE", "1")
-
-	cfg := &config.Config{
-		EventLog: config.EventLogConfig{
-			SQLiteConfig: config.SQLiteConfig{
-				Filename: filepath.Join(t.TempDir(), "log.sqlite"),
-			},
-		},
+		Runtime: config.RuntimeConfig{Default: config.RuntimeLocal},
 		Harnesses: config.HarnessesConfig{
 			Substrate: []config.SubstrateHarnessConfig{
 				{ID: "custom", Namespace: "team-ns", Template: "custom-template"},
